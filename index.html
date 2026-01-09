@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Aziz Food Log</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#111111" />
+  <style>
+    body{font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif; margin:0; background:#0b0b0b; color:#fff;}
+    .wrap{max-width:720px; margin:0 auto; padding:16px;}
+    h1{font-size:20px; margin:0 0 10px;}
+    .card{background:#151515; border:1px solid #222; border-radius:12px; padding:12px; margin:10px 0;}
+    label{display:block; font-size:12px; opacity:.8; margin-top:10px;}
+    input,select,textarea{width:100%; box-sizing:border-box; padding:10px; border-radius:10px; border:1px solid #2a2a2a; background:#0f0f0f; color:#fff;}
+    button{padding:10px 12px; border-radius:10px; border:1px solid #2a2a2a; background:#1f1f1f; color:#fff; cursor:pointer;}
+    button.primary{background:#2b6cff; border-color:#2b6cff;}
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+    .muted{opacity:.75; font-size:12px;}
+    .big{font-size:18px; font-weight:700;}
+    .grid{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+    .pill{display:inline-block; padding:6px 10px; border:1px solid #2a2a2a; border-radius:999px; font-size:12px; opacity:.9}
+    .danger{color:#ff6b6b}
+    .ok{color:#5CFF92}
+    .hr{height:1px; background:#262626; margin:10px 0}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Food Log (Aziz)</h1>
+  <div class="muted" id="todayLabel"></div>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label>Entry type</label>
+        <select id="type">
+          <option value="food">Food</option>
+          <option value="water">Water</option>
+          <option value="supp">Supplement</option>
+          <option value="activity">Activity calories</option>
+        </select>
+      </div>
+      <div>
+        <label>Quick templates</label>
+        <select id="template">
+          <option value="">—</option>
+          <option value="protein_shake">Protein shake (230 kcal, 45P, 6C, 4F, 35 chol)</option>
+          <option value="berberine_1000">Berberine 1000 mg (0 kcal)</option>
+          <option value="water_330">Water 330 ml</option>
+        </select>
+      </div>
+    </div>
+
+    <label>Description</label>
+    <input id="desc" placeholder="e.g., Nando’s chicken breast 200g" />
+
+    <div id="foodFields">
+      <div class="grid">
+        <div><label>Calories</label><input id="cal" type="number" step="1" /></div>
+        <div><label>Protein (g)</label><input id="p" type="number" step="0.1" /></div>
+        <div><label>Carbs (g)</label><input id="c" type="number" step="0.1" /></div>
+        <div><label>Fats (g)</label><input id="f" type="number" step="0.1" /></div>
+      </div>
+      <label>Cholesterol (mg)</label>
+      <input id="chol" type="number" step="1" />
+    </div>
+
+    <div id="waterFields" style="display:none">
+      <label>Water amount (ml)</label>
+      <input id="waterMl" type="number" step="10" placeholder="e.g., 330" />
+    </div>
+
+    <div id="suppFields" style="display:none">
+      <label>Supplement amount (mg) (optional)</label>
+      <input id="suppMg" type="number" step="50" placeholder="e.g., 1000" />
+    </div>
+
+    <div id="activityFields" style="display:none">
+      <label>Calories burned (kcal)</label>
+      <input id="actCal" type="number" step="1" placeholder="e.g., 520" />
+    </div>
+
+    <div class="hr"></div>
+    <button class="primary" id="addBtn">Add entry</button>
+  </div>
+
+  <div class="card">
+    <div class="big">Most recent</div>
+    <div class="muted" id="recent"></div>
+  </div>
+
+  <div class="card">
+    <div class="big">Today totals</div>
+    <div class="grid">
+      <div class="pill">Calories: <b id="tCal">0</b></div>
+      <div class="pill">Protein: <b id="tP">0</b> g</div>
+      <div class="pill">Carbs: <b id="tC">0</b> g</div>
+      <div class="pill">Fats: <b id="tF">0</b> g</div>
+      <div class="pill">Chol: <b id="tChol">0</b> mg</div>
+      <div class="pill">Water: <b id="tWater">0</b> ml</div>
+      <div class="pill">Activity: <b id="tAct">0</b> kcal</div>
+    </div>
+    <div class="hr"></div>
+    <div class="muted">BMR: <b id="bmr">1833</b> kcal</div>
+    <div class="big">Deficit if ended now: <span id="defNow" class="ok">0</span></div>
+    <div class="muted">Deficit = (BMR + Activity) − Calories eaten</div>
+    <div class="hr"></div>
+    <button id="endDayBtn">End day (save summary)</button>
+  </div>
+
+  <div class="card">
+    <div class="big">Last saved day summary</div>
+    <div class="muted" id="lastSummary">None yet.</div>
+  </div>
+
+  <div class="muted" style="text-align:center; padding:10px 0">
+    Install: iPhone Safari → Share → “Add to Home Screen”
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+</script>
+</body>
+</html>
