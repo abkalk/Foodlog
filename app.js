@@ -1,3 +1,54 @@
+async function aiEstimateAndAdd() {
+  const text = document.getElementById('aiText').value.trim();
+  const note = document.getElementById('aiNote');
+  if (!text) return;
+
+  note.textContent = "Estimating…";
+
+  const res = await fetch("https://YOUR-WORKER-URL/log", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      text,
+      context: { weightKg: 90, bmr: 1833, waterTargetMl: 4000 }
+    })
+  });
+
+  const data = await res.json();
+
+  // If water-only
+  if ((data?.totals?.water_ml || 0) > 0 && (data?.totals?.calories || 0) === 0) {
+    // add water entry using your existing logic:
+    // (simplest) just alert + you manually add for now, or wire into your water add function
+  }
+
+  // Add as ONE combined food entry (totals)
+  const cal = Number(data?.totals?.calories || 0);
+  const p = Number(data?.totals?.protein_g || 0);
+  const c = Number(data?.totals?.carbs_g || 0);
+  const f = Number(data?.totals?.fats_g || 0);
+  const chol = Number(data?.totals?.cholesterol_mg || 0);
+
+  // Fill fields then trigger your existing addEntry() function
+  document.getElementById('type').value = 'food';
+  document.getElementById('desc').value = text;
+  document.getElementById('cal').value = cal;
+  document.getElementById('p').value = p;
+  document.getElementById('c').value = c;
+  document.getElementById('f').value = f;
+  document.getElementById('chol').value = chol;
+
+  note.textContent = data?.assumptions?.length
+    ? `Added. Assumptions: ${data.assumptions.join(" | ")}`
+    : "Added.";
+
+  // call your existing addEntry()
+  // If your addEntry is in scope, call it directly; otherwise connect it to a button click
+  // addEntry();
+}
+
+document.getElementById('aiBtn')?.addEventListener('click', aiEstimateAndAdd);
+
 const BMR = 1833;
 const WATER_TARGET_ML = 4000;
 
