@@ -1,4 +1,4 @@
-const CACHE = 'foodlog-v1';
+const CACHE = 'foodlog-v2';
 const ASSETS = ['./','./index.html','./app.js','./manifest.webmanifest'];
 
 self.addEventListener('install', (e)=>{
