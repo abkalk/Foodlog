@@ -1,6 +1,11 @@
 const BMR = 1833;
 const WATER_TARGET_ML = 4000;
 
+// Game settings (you can tweak these anytime)
+const CAL_CAP = 1200;         // daily calories target cap
+const PROTEIN_TARGET = 120;   // grams
+const MIN_QUESTS_FOR_STREAK = 3;
+
 const els = {
   todayLabel: document.getElementById('todayLabel'),
   type: document.getElementById('type'),
@@ -30,11 +35,20 @@ const els = {
   defNow: document.getElementById('defNow'),
   endDayBtn: document.getElementById('endDayBtn'),
   lastSummary: document.getElementById('lastSummary'),
+
+  // HUD
+  hudLine: document.getElementById('hudLine'),
+  lvl: document.getElementById('lvl'),
+  xp: document.getElementById('xp'),
+  streak: document.getElementById('streak'),
+  questsDone: document.getElementById('questsDone'),
+  quests: document.getElementById('quests'),
+  badges: document.getElementById('badges'),
 };
 
 function todayKey() {
   const d = new Date();
-  return d.toISOString().slice(0,10); // YYYY-MM-DD
+  return d.toISOString().slice(0,10);
 }
 
 function loadDay() {
@@ -47,6 +61,14 @@ function saveDay(data) {
   localStorage.setItem(key, JSON.stringify(data));
 }
 
+function loadGame() {
+  return JSON.parse(localStorage.getItem('game') || '{"xp":0,"streak":0,"lastEnded":null,"counters":{"waterHits":0,"proteinHits":0,"deficitHits":0,"daysEnded":0}}');
+}
+
+function saveGame(g) {
+  localStorage.setItem('game', JSON.stringify(g));
+}
+
 function setFieldsByType() {
   const t = els.type.value;
   els.foodFields.style.display = (t === 'food') ? 'block' : 'none';
@@ -57,33 +79,7 @@ function setFieldsByType() {
 
 function fmt(n, digits=0){ return Number(n || 0).toFixed(digits); }
 
-function render() {
-  const d = loadDay();
-  els.todayLabel.textContent = `Today: ${todayKey()} • Water target: ${WATER_TARGET_ML} ml`;
-  const last = d.entries[d.entries.length - 1];
-  els.recent.textContent = last ? `${new Date(last.ts).toLocaleTimeString()} — ${last.text}` : 'No entries yet.';
-
-  els.tCal.textContent = fmt(d.totals.cal);
-  els.tP.textContent = fmt(d.totals.p, 1);
-  els.tC.textContent = fmt(d.totals.c, 1);
-  els.tF.textContent = fmt(d.totals.f, 1);
-  els.tChol.textContent = fmt(d.totals.chol);
-  els.tWater.textContent = fmt(d.totals.water);
-  els.tAct.textContent = fmt(d.totals.act);
-
-  const deficitNow = (BMR + d.totals.act) - d.totals.cal;
-  els.defNow.textContent = `${deficitNow >= 0 ? '−' : '+'}${Math.abs(Math.round(deficitNow))} kcal`;
-  els.defNow.className = deficitNow >= 0 ? 'ok' : 'danger';
-
-  const lastSummary = JSON.parse(localStorage.getItem('lastSummary') || 'null');
-  if (lastSummary) {
-    els.lastSummary.textContent =
-      `${lastSummary.date} — Intake ${lastSummary.intake} kcal, Burn ${lastSummary.burn} kcal, Deficit ${lastSummary.deficit} kcal, Water ${lastSummary.water} ml`;
-  }
-}
-
 function applyTemplate(v){
-  // reset
   els.desc.value = '';
   els.cal.value = '';
   els.p.value = '';
@@ -167,9 +163,101 @@ function addEntry() {
   d.entries.push({ ts, type: t, text: entryText });
   saveDay(d);
 
-  // reset template dropdown
+  // XP: reward logging consistency (max 10/day)
+  const g = loadGame();
+  const todayLogCount = d.entries.length;
+  if (todayLogCount <= 10) g.xp += 10;
+  saveGame(g);
+
   els.template.value = '';
   render();
+}
+
+function computeQuests(d) {
+  const q = [
+    { key:'water', name:`Hydration: ${WATER_TARGET_ML} ml`, done: d.totals.water >= WATER_TARGET_ML },
+    { key:'cal', name:`Calories under ${CAL_CAP}`, done: d.totals.cal > 0 && d.totals.cal <= CAL_CAP },
+    { key:'protein', name:`Protein ≥ ${PROTEIN_TARGET}g`, done: d.totals.p >= PROTEIN_TARGET },
+    { key:'activity', name:`Activity logged`, done: d.totals.act > 0 },
+    { key:'log', name:`Log day (≥3 entries)`, done: d.entries.length >= 3 },
+  ];
+  return q;
+}
+
+function renderBadges(g) {
+  const badges = [];
+  const waterBeast = g.counters.waterHits >= 3;
+  const proteinLocked = g.counters.proteinHits >= 5;
+  const deficitKing = g.counters.deficitHits >= 3;
+  const consistency7 = g.streak >= 7;
+
+  badges.push({ name:'Hydration Beast', on: waterBeast });
+  badges.push({ name:'Protein Locked', on: proteinLocked });
+  badges.push({ name:'Deficit King', on: deficitKing });
+  badges.push({ name:'Consistency x7', on: consistency7 });
+
+  els.badges.innerHTML = badges.map(b => `<span class="badge ${b.on ? 'on':''}">${b.on ? '🏅' : '🔒'} ${b.name}</span>`).join('');
+}
+
+function render() {
+  const d = loadDay();
+  const g = loadGame();
+
+  els.todayLabel.textContent = `Today: ${todayKey()} • Water target: ${WATER_TARGET_ML} ml • Cal cap: ${CAL_CAP} • Protein target: ${PROTEIN_TARGET}g`;
+
+  const last = d.entries[d.entries.length - 1];
+  els.recent.textContent = last ? `${new Date(last.ts).toLocaleTimeString()} — ${last.text}` : 'No entries yet.';
+
+  els.tCal.textContent = fmt(d.totals.cal);
+  els.tP.textContent = fmt(d.totals.p, 1);
+  els.tC.textContent = fmt(d.totals.c, 1);
+  els.tF.textContent = fmt(d.totals.f, 1);
+  els.tChol.textContent = fmt(d.totals.chol);
+  els.tWater.textContent = fmt(d.totals.water);
+  els.tAct.textContent = fmt(d.totals.act);
+
+  const deficitNow = (BMR + d.totals.act) - d.totals.cal;
+  els.defNow.textContent = `${deficitNow >= 0 ? '−' : '+'}${Math.abs(Math.round(deficitNow))} kcal`;
+  els.defNow.className = deficitNow >= 0 ? 'ok' : 'danger';
+
+  // HUD
+  const level = Math.floor(g.xp / 250) + 1;
+  els.lvl.textContent = level;
+  els.xp.textContent = g.xp;
+  els.streak.textContent = g.streak;
+
+  const quests = computeQuests(d);
+  const doneCount = quests.filter(x => x.done).length;
+  els.questsDone.textContent = doneCount;
+
+  els.quests.innerHTML = quests.map(q => `
+    <div class="check">
+      <span>${q.done ? '✅' : '⬜️'}</span>
+      <span>${q.name}</span>
+    </div>
+  `).join('');
+
+  els.hudLine.textContent = `Deficit now: ${Math.round(deficitNow)} kcal • Water remaining: ${Math.max(0, WATER_TARGET_ML - d.totals.water)} ml`;
+
+  renderBadges(g);
+
+  const lastSummary = JSON.parse(localStorage.getItem('lastSummary') || 'null');
+  if (lastSummary) {
+    els.lastSummary.textContent =
+      `${lastSummary.date} — Intake ${lastSummary.intake} kcal, Burn ${lastSummary.burn} kcal, Deficit ${lastSummary.deficit} kcal, Water ${lastSummary.water} ml, Quests ${lastSummary.questsDone}/5, XP +${lastSummary.xpEarned}`;
+  }
+}
+
+function awardXPForDay(d) {
+  // XP for quests completion
+  const quests = computeQuests(d);
+  let xp = 0;
+  if (quests.find(q=>q.key==='water').done) xp += 50;
+  if (quests.find(q=>q.key==='cal').done) xp += 50;
+  if (quests.find(q=>q.key==='protein').done) xp += 50;
+  if (quests.find(q=>q.key==='activity').done) xp += 30;
+  if (quests.find(q=>q.key==='log').done) xp += 20;
+  return { xp, questsDone: quests.filter(q=>q.done).length };
 }
 
 function endDay() {
@@ -178,15 +266,59 @@ function endDay() {
   const intake = d.totals.cal;
   const deficit = burn - intake;
 
+  const g = loadGame();
+  const { xp, questsDone } = awardXPForDay(d);
+
+  // streak logic: if you ended today and completed enough quests
+  const prev = g.lastEnded;
+  const today = todayKey();
+
+  // count badges
+  if (d.totals.water >= WATER_TARGET_ML) g.counters.waterHits += 1;
+  if (d.totals.p >= PROTEIN_TARGET) g.counters.proteinHits += 1;
+  if (deficit >= 1200) g.counters.deficitHits += 1;
+
+  if (questsDone >= MIN_QUESTS_FOR_STREAK) {
+    // if ended yesterday, keep streak; otherwise reset to 1
+    if (prev) {
+      const prevDate = new Date(prev);
+      const todayDate = new Date(today);
+      const diffDays = Math.round((todayDate - prevDate) / (1000*60*60*24));
+      g.streak = (diffDays === 1) ? (g.streak + 1) : 1;
+    } else {
+      g.streak = 1;
+    }
+  } else {
+    // ended day but didn't meet minimum quests -> streak doesn't grow
+    // keep as-is (or set to 0 if you want harsher)
+  }
+
+  g.xp += xp;
+  g.lastEnded = today;
+  g.counters.daysEnded += 1;
+  saveGame(g);
+
   const summary = {
-    date: todayKey(),
+    date: today,
     intake: Math.round(intake),
     burn: Math.round(burn),
     deficit: Math.round(deficit),
     water: Math.round(d.totals.water),
+    questsDone,
+    xpEarned: xp
   };
   localStorage.setItem('lastSummary', JSON.stringify(summary));
-  alert(`Saved Day Summary:\nIntake: ${summary.intake} kcal\nBurn: ${summary.burn} kcal\nDeficit: ${summary.deficit} kcal\nWater: ${summary.water} ml`);
+
+  alert(
+    `Day Saved ✅\n` +
+    `Intake: ${summary.intake} kcal\n` +
+    `Burn: ${summary.burn} kcal\n` +
+    `Deficit: ${summary.deficit} kcal\n` +
+    `Water: ${summary.water} ml\n` +
+    `Quests: ${summary.questsDone}/5\n` +
+    `XP +${summary.xpEarned} (Level ${Math.floor(loadGame().xp/250)+1})`
+  );
+
   render();
 }
 
