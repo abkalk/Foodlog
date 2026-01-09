@@ -5,7 +5,7 @@ async function aiEstimateAndAdd() {
 
   note.textContent = "Estimating…";
 
-  const res = await fetch("https://YOUR-WORKER-URL/log", {
+  const res = await fetch("<VERSION_PREFIX>-<WORKER_NAME>.alkuwari-aziz10.workers.dev", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
